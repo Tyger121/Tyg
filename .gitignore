@@ -1,33 +1,72 @@
-# Gradle files
-.gradle/
-build/
+import datetime
+import sqlite3
 
-# Local configuration file (sdk path, etc)
-local.properties
+class EmployeeClockingSystem:
+    def __init__(self):
+        self.db = sqlite3.connect('employee_clocking_system.db')
+        self.cursor = self.db.cursor()
 
-# Log/OS Files
-*.log
+        # Create the employee table if it doesn't exist
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS employees (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL,
+            password TEXT NOT NULL
+        )''')
 
-# Android Studio generated files and folders
-captures/
-.externalNativeBuild/
-.cxx/
-*.apk
-output.json
+        # Create the clocking table if it doesn't exist
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS clocking (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            employee_id INTEGER NOT NULL,
+            clock_in_time DATETIME NOT NULL,
+            clock_out_time DATETIME
+        )''')
 
-# IntelliJ
-*.iml
-.idea/
-misc.xml
-deploymentTargetDropDown.xml
-render.experimental.xml
+    def login(self, email, password):
+        # Check if the employee exists
+        self.cursor.execute('SELECT * FROM employees WHERE email = ? AND password = ?', (email, password))
+        employee = self.cursor.fetchone()
 
-# Keystore files
-*.jks
-*.keystore
+        if employee is None:
+            return False
+        else:
+            return True
 
-# Google Services (e.g. APIs or Firebase)
-google-services.json
+    def clock_in(self, employee_id):
+        # Insert a new row into the clocking table
+        self.cursor.execute('INSERT INTO clocking (employee_id, clock_in_time) VALUES (?, ?)', (employee_id, datetime.datetime.now()))
+        self.db.commit()
 
-# Android Profiling
-*.hprof
+    def clock_out(self, employee_id):
+        # Update the clocking table with the clock_out_time
+        self.cursor.execute('UPDATE clocking SET clock_out_time = ? WHERE employee_id = ? AND clock_out_time IS NULL', (datetime.datetime.now(), employee_id))
+        self.db.commit()
+
+    def get_employee_clocking_data(self, employee_id):
+        # Get all of the clocking data for the employee
+        self.cursor.execute('SELECT * FROM clocking WHERE employee_id = ?', (employee_id,))
+        clocking_data = self.cursor.fetchall()
+
+        return clocking_data
+
+# Create a new employee clocking system
+employee_clocking_system = EmployeeClockingSystem()
+
+# Login to the employee clocking system
+login_success = employee_clocking_system.login('john.doe@example.com', 'password123')
+
+if login_success:
+    # Clock in
+    employee_clocking_system.clock_in(1)
+
+    # Clock out
+    employee_clocking_system.clock_out(1)
+
+    # Get the employee's clocking data
+    clocking_data = employee_clocking_system.get_employee_clocking_data(1)
+
+    # Print the employee's clocking data
+    for row in clocking_data:
+        print(row)
+else:
+    print('Login failed')
